@@ -1,5 +1,7 @@
 # MausamCover: protect your peak festive week
 
+**🤖 Try the bot on Telegram: [@mausamcover_bot](https://t.me/mausamcover_bot)** · [how to use it](#try-it-on-telegram)
+
 > **Hackathon simulation.** Not insurance, not a licensed product, no real money,
 > stakes, or payouts. Payments use Razorpay **test mode**; the chain is a **testnet**.
 
@@ -7,6 +9,18 @@ A Diwali-mela stall owner earns a big share of their year in one festive week, a
 unseasonal Bengaluru downpour can wipe it out. MausamCover lets them ask on **WhatsApp**
 (voice note in Kannada/Hindi/English), get a two-layer quote, pay a **test UPI** premium,
 and later see exactly why a payout did or didn't happen, **verifiable on-chain**.
+
+## Try it on Telegram
+
+**Bot: [@mausamcover_bot](https://t.me/mausamcover_bot)** (live only while the demo server is running)
+
+1. Open [t.me/mausamcover_bot](https://t.me/mausamcover_bot) and tap **Start**.
+2. Send a **voice note** (Kannada, Hindi or English) or text, e.g.
+   *"Diwali week, Commercial Street mela, I sell about ₹8,000 a day, what if it rains?"*
+3. You get a quote in your language: rain cover, plus basis-gap cover if your mela is in the pilot.
+4. Tap the **test UPI** payment link (Razorpay test mode, no real money) → "Policy active" + on-chain link.
+5. After a scenario is run from the operator console, the bot sends the settlement: what paid, what
+   didn't, and why, with the on-chain record.
 
 ## How it works
 
