@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MausamCover · Operator console</title>
+<script src="https://unpkg.com/htmx.org@2.0.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+  function drawQRs() { document.querySelectorAll('.qr:not([data-done])').forEach(el => {
+    const q = qrcode(0, 'M'); q.addData(el.dataset.url); q.make(); el.innerHTML = q.createImgTag(4, 4); el.dataset.done = 1; }); }
+  document.addEventListener('DOMContentLoaded', drawQRs); document.addEventListener('htmx:afterSwap', drawQRs);
+</script>
+<style>
+  :root { --bg:#faf8f5; --fg:#1d1b18; --muted:#6b655d; --line:#e4dfd7; --card:#fff;
+          --ok:#1f7a4d; --warn:#b4561b; --bad:#b42318; --accent:#7a3cff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#151412; --fg:#ece8e1; --muted:#a39d94; --line:#2c2a27; --card:#1c1b19; } }
+  * { box-sizing:border-box } body { margin:0; font:14px/1.45 system-ui, sans-serif; background:var(--bg); color:var(--fg) }
+  header { padding:16px 24px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap }
+  header h1 { font-size:18px; margin:0 } .sim { background:var(--warn); color:#fff; padding:2px 8px; border-radius:4px; font-size:12px; font-weight:600 }
+  main { padding:20px 24px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)) }
+  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 10px }
+  table { width:100%; border-collapse:collapse; font-size:13px } td,th { text-align:left; padding:5px 6px; border-bottom:1px solid var(--line); vertical-align:top }
+  th { color:var(--muted); font-weight:500 } .num { text-align:right; font-variant-numeric:tabular-nums }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; border:1px solid var(--line) }
+  .ok { color:var(--ok) } .bad { color:var(--bad) } .warn { color:var(--warn) } .muted { color:var(--muted) }
+  button { font:inherit; padding:4px 10px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--fg); cursor:pointer }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent) }
+  .big { font-size:28px; font-weight:600; font-variant-numeric:tabular-nums } a { color:var(--accent) }
+  form.inline { display:inline } .wide { grid-column:1/-1 }
+</style>
+</head>
+<body>
+<header>
+  <h1>MausamCover · operator console</h1>
+  <span class="sim">SIMULATION: no real insurance, money or market</span>
+  <span class="muted">Stall owners use WhatsApp; this console is for operators and judges.</span>
+  <form class="inline" method="post" action="/ops/demo-policy" style="margin-left:auto">
+    <input name="daily_sales" value="8000" size="6"> ₹/day
+    <button>Create demo policy (no WhatsApp)</button>
+  </form>
+</header>
+<section style="margin:16px 24px 0">
+  <h2>Stall owner intake → replies on WhatsApp</h2>
+  <form id="intake" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input name="phone" id="phone" placeholder="WhatsApp number (+91…), joined to sandbox" size="30">
+    <input name="text" placeholder="…or type: Commercial Street mela, 8000 a day" size="40">
+    <button type="button" id="rec">🎙 Record voice note</button>
+    <button type="submit" class="primary">Send</button>
+    <span id="st" class="muted"></span>
+  </form>
+</section>
+<script>
+  const ph = document.getElementById('phone'); ph.value = localStorage.getItem('phone') || '';
+  let rec, chunks = [], blob = null;
+  const st = document.getElementById('st'), btn = document.getElementById('rec');
+  btn.onclick = async () => {
+    if (rec && rec.state === 'recording') { rec.stop(); return; }
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    rec = new MediaRecorder(s); chunks = [];
+    rec.ondataavailable = e => chunks.push(e.data);
+    rec.onstop = () => { blob = new Blob(chunks, { type: rec.mimeType }); s.getTracks().forEach(t => t.stop());
+      btn.textContent = '🎙 Re-record'; st.textContent = `voice note ready (${Math.round(blob.size/1024)} KB)`; };
+    rec.start(); btn.textContent = '⏹ Stop'; st.textContent = 'recording…';
+  };
+  document.getElementById('intake').onsubmit = async e => {
+    e.preventDefault(); localStorage.setItem('phone', ph.value);
+    const fd = new FormData(e.target);
+    if (blob) fd.append('audio', blob, 'note.webm');
+    st.textContent = 'sent: Sarvam is listening, check WhatsApp…';
+    await fetch('/ops/intake', { method: 'POST', body: fd }); blob = null; btn.textContent = '🎙 Record voice note';
+  };
+</script>
+<div hx-get="/partials/live" hx-trigger="every 3s" hx-swap="innerHTML">
+  {% include "_live.html" %}
+</div>
+</body>
+</html>

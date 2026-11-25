@@ -1,0 +1,111 @@
+<main>
+  <section class="wide">
+    <h2>WhatsApp conversation (live)</h2>
+    <div style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow:auto;background:var(--bg);padding:10px;border-radius:6px">
+    {% for e in events|reverse if e.kind in ('whatsapp.in', 'whatsapp.out', 'sarvam.stt') %}
+      {% if e.kind == 'whatsapp.in' %}
+        <div style="align-self:flex-start;max-width:70%;background:var(--card);border:1px solid var(--line);padding:6px 10px;border-radius:10px">
+          <span class="muted">stall owner ({{ e.detail['from'][-4:] }})</span><br>{{ '🎤 voice note' if e.detail.media else e.detail.body }}</div>
+      {% elif e.kind == 'sarvam.stt' %}
+        <div style="align-self:flex-start;max-width:70%" class="muted">Sarvam STT ({{ e.detail.language }}): “{{ e.detail.text }}”</div>
+      {% else %}
+        <div style="align-self:flex-end;max-width:70%;background:#d9fdd3;color:#111;padding:6px 10px;border-radius:10px;white-space:pre-wrap">{{ e.detail.body }}
+{% set marker = 'Pay (TEST, no real money): ' %}{% if marker in e.detail.body %}{% set link = e.detail.body.split(marker)[1].split()[0] %}
+<div class="qr" data-url="{{ link }}" style="background:#fff;padding:6px;display:inline-block;margin-top:6px"></div> <a href="{{ link }}" target="_blank">open payment page</a> <span style="font-size:11px;color:#555">scan with phone to pay (test)</span>
+{% endif %}<span style="font-size:11px;color:#555">{% if e.detail.status == 'ok' %}✓ delivered via WhatsApp{% elif e.detail.status == 'blocked' %}⚠ not delivered: reply channel blocked on Twilio trial (template required){% else %}{{ e.detail.status }}{% endif %}</span></div>
+      {% endif %}
+    {% else %}<div class="muted">Send a WhatsApp message or voice note to the sandbox number, or use the intake form above.</div>{% endfor %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Integrations</h2>
+    <table>
+      {% for name, on in integrations.items() %}
+      <tr><td>{{ name }}</td><td class="{{ 'ok' if on else 'warn' }}">{{ 'connected' if on else 'fallback / not configured' }}</td></tr>
+      {% endfor %}
+      <tr><td>Flag source</td><td class="muted">{{ flags_console.source }}</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Oracle feed (weather worker on Kubernetes)</h2>
+    {% if oracle.healthy %}
+      <div class="big ok">Healthy</div>
+      <div class="muted">last heartbeat {{ oracle.age }}s ago · {{ oracle.last.rain_mm_last_hour if oracle.last else '' }} mm last hour at grid point</div>
+    {% else %}
+      <div class="big bad">Stale / down</div>
+      <div class="muted">{{ 'last heartbeat ' ~ oracle.age ~ 's ago' if oracle.age is not none else 'no heartbeat yet' }}. Settlements will be <b>held for human review</b>.</div>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Prediction market (simulated LMSR, off-chain)</h2>
+    <div class="muted" style="margin-bottom:6px">{{ market.question }}</div>
+    <div class="big">{{ '%.0f' % (market.price_yes() * 100) }}% YES</div>
+    <div class="muted">liquidity b = {{ market.b|int }} · seeded synthetic traders, no real stakes</div>
+    <table style="margin-top:8px">
+      <tr><th>Trader</th><th>Side</th><th class="num">Shares</th><th class="num">P(yes) after</th></tr>
+      {% for t in market.trades %}
+      <tr><td>{{ t.trader }}</td><td>{{ t.side }}</td><td class="num">{{ t.shares }}</td><td class="num">{{ '%.1f' % (t.price_yes_after*100) }}%</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section>
+    <h2>Live pricing preview (₹8,000/day stall)</h2>
+    <table>
+      <tr><td>Rain trigger (Flagsmith <code>rain_threshold_mm</code>)</td><td class="num">{{ preview.rain_threshold_mm|int }} mm</td></tr>
+      <tr><td>Layer 1 rain cover: payout / evening</td><td class="num">₹{{ preview.layer1_payout_per_day }}</td></tr>
+      <tr><td>Layer 1 premium</td><td class="num">₹{{ preview.layer1_premium }}</td></tr>
+      <tr><td>Layer 2 basis-gap: payout</td><td class="num">₹{{ preview.layer2_payout }}</td></tr>
+      <tr><td>Layer 2 premium (market-priced)</td><td class="num">₹{{ preview.layer2_premium }}</td></tr>
+    </table>
+  </section>
+
+  <section class="wide">
+    <h2>Policies</h2>
+    <table>
+      <tr><th>ID</th><th>Phone</th><th>Mela</th><th>Layers</th><th class="num">Premium</th><th>Status</th><th>Actions</th></tr>
+      {% for p in policies %}
+      <tr>
+        <td>{{ p.id }}</td><td>{{ p.phone }}</td><td>{{ p.quote.mela_name }}</td>
+        <td>Rain{% if p.quote.layer2_offered %} + Basis-gap{% endif %}</td>
+        <td class="num">₹{{ p.quote.total_premium }}</td>
+        <td><span class="pill {{ {'active':'ok','held':'bad','settled':'muted'}.get(p.status,'') }}">{{ p.status }}</span></td>
+        <td>
+          {% if p.status == 'quoted' %}
+            <form class="inline" method="post" action="/ops/activate/{{ p.id }}"><button>Mark paid (test)</button></form>
+          {% elif p.status == 'active' %}
+            {% for k, s in scenarios.items() %}
+            <form class="inline" method="post" action="/ops/scenario/{{ p.id }}/{{ k }}"><button title="{{ s.rain_note }}">{{ k }}: {{ s.label }}</button></form>
+            {% endfor %}
+          {% elif p.status == 'held' %}
+            <form class="inline" method="post" action="/ops/approve/{{ p.id }}">
+              <input type="hidden" name="approver" value="on-call operator">
+              <button class="primary" {% if not oracle.healthy %}disabled title="Fix oracle first (NudgeBee runbook)"{% endif %}>Approve settlement</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="7" class="muted">No policies yet. Send a WhatsApp message or create a demo policy.</td></tr>{% endfor %}
+    </table>
+  </section>
+
+  <section class="wide">
+    <h2>Audit trail (on-chain links where available)</h2>
+    <table>
+      <tr><th>Policy</th><th>Event</th><th>Detail</th></tr>
+      {% for e in events %}
+      <tr>
+        <td>{{ e.policy_id or '·' }}</td><td>{{ e.kind }}</td>
+        <td>
+          {% if e.detail.url %}<a href="{{ e.detail.url }}" target="_blank">Verify on-chain ↗</a> <span class="muted">{{ e.detail.status }}</span>
+          {% elif e.detail.explanation %}{{ e.detail.explanation }} <b>Paid ₹{{ e.detail.layer1_paid + e.detail.layer2_paid }} (simulated)</b>
+          {% else %}<span class="muted">{{ e.detail|tojson|truncate(180) }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </section>
+</main>

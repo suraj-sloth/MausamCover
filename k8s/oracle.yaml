@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mausamcover
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oracle-config
+  namespace: mausamcover
+data:
+  # Mac host from inside kind (Docker Desktop). Or use your ngrok URL.
+  APP_URL: "http://host.docker.internal:8080"
+  LAT: "12.9822"
+  LON: "77.6083"
+  INTERVAL_SECONDS: "20"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oracle-secret
+  namespace: mausamcover
+stringData:
+  ORACLE_TOKEN: "dev-oracle-token"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: weather-oracle
+  namespace: mausamcover
+  labels: { app: weather-oracle }
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # a bad config takes the oracle down (no old pod lingering)
+  selector:
+    matchLabels: { app: weather-oracle }
+  template:
+    metadata:
+      labels: { app: weather-oracle }
+    spec:
+      containers:
+        - name: oracle
+          image: mausamcover/oracle:dev
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef: { name: oracle-config }
+            - secretRef: { name: oracle-secret }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }

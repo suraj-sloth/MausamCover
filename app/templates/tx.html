@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MausamLedger tx</title>
+<style>body{font:14px/1.5 system-ui,sans-serif;max-width:760px;margin:30px auto;padding:0 20px}
+code{word-break:break-all}.ok{color:#1f7a4d}.bad{color:#b42318}td{padding:4px 8px;border-bottom:1px solid #e4dfd7;vertical-align:top}
+.note{background:#fff4e5;border:1px solid #f0c48a;padding:8px 12px;border-radius:6px}</style></head><body>
+<h2>MausamLedger transaction</h2>
+{% if d.local %}<p class="note">Local EVM fallback (same contract, same checks). On a funded testnet this links to the public block explorer.</p>{% endif %}
+<table>
+<tr><td>Tx</td><td><code>{{ d.tx }}</code></td></tr>
+<tr><td>Status</td><td class="{{ 'ok' if d.status == 1 else 'bad' }}">{{ 'success' if d.status == 1 else 'reverted' }}</td></tr>
+<tr><td>Block</td><td>{{ d.block }}</td></tr>
+<tr><td>Contract</td><td><code>{{ d.contract }}</code></td></tr>
+<tr><td>Operator</td><td><code>{{ d.from }}</code></td></tr>
+</table>
+{% for e in d.events %}<h3>{{ e.event }}</h3><table>{% for k, v in e.args.items() %}<tr><td>{{ k }}</td><td><code>{{ v }}</code></td></tr>{% endfor %}</table>{% endfor %}
+</body></html>
